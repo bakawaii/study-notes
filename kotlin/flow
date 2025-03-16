@@ -1,0 +1,210 @@
+
+
+An example with runBlocking and coroutineScope
+runBlocking and coroutineScope builders may look similar because they both wait for their body and all its children to complete. The main difference is that the runBlocking method blocks the current thread for waiting, while coroutineScope just suspends, releasing the underlying thread for other usages. Because of that difference, runBlocking is a regular function and coroutineScope is a suspending function.
+
+
+
+
+
+
+??
+launch doesn't take a Dispatchers.IO parameter. When you don't pass a Dispatcher to launch, any coroutines launched from viewModelScope run in the main thread.
+
+
+suspend pauses the execution of the current coroutine, saving all local variables.
+
+Kotlin uses a stack frame to manage which function is running along with any local variables. When suspending a coroutine, the current stack frame is copied and saved for later. When resuming, the stack frame is copied back from where it was saved, and the function starts running again. Even though the code might look like an ordinary sequential blocking request, the coroutine ensures that the network request avoids blocking the main thread.
+
+Coroutines can suspend themselves, and the dispatcher is responsible for resuming them.
+
+A good practice is to use withContext() to make sure every function is main-safe, which means that you can call the function from the main thread. This way, the caller never needs to think about which thread should be used to execute the function.
+
+For example, if a function makes ten calls to a network, you can tell Kotlin to switch threads only once by using an outer withContext(). Then, even though the network library uses withContext() multiple times, it stays on the same dispatcher and avoids switching threads. In addition, Kotlin optimizes switching between Dispatchers.Default and Dispatchers.IO to avoid thread switches whenever possible.
+
+
+
+Important: Using a dispatcher that uses a thread pool like Dispatchers.IO or Dispatchers.Default does not guarantee that the block executes on the same thread from top to bottom. In some situations, Kotlin coroutines might move execution to another thread after a suspend-and-resume. This means thread-local variables might not point to the same value for the entire withContext() block.
+
+
+You can start coroutines in one of two ways:
+
+launch starts a new coroutine and doesn't return the result to the caller. Any work that is considered "fire and forget" can be started using launch.
+async starts a new coroutine and allows you to return a result with a suspend function called await.
+
+Typically, you should launch a new coroutine from a regular function, as a regular function cannot call await. Use async only when inside another coroutine or when inside a suspend function and performing parallel decomposition.
+
+Warning: launch and async handle exceptions differently. Since async expects an eventual call to await, it holds exceptions and rethrows them as part of the await call. This means if you use async to start a new coroutine from a regular function, you might silently drop an exception. These dropped exceptions won't appear in your crash metrics or be noted in logcat. For more information, see Cancellation and Exceptions in Coroutines.
+
+
+Await & awaitAll
+
+A CoroutineScope keeps track of any coroutine it creates using launch or async. The ongoing work (i.e. the running coroutines) can be cancelled by calling scope.cancel() at any point in time.
+
+Unlike a dispatcher, however, a CoroutineScope doesn't run the coroutines.
+
+> when to create a new coroutinescope?
+
+A cancelled scope cannot create more coroutines. 
+
+Cancel Job
+
+A CoroutineContext defines the behavior of a coroutine using the following set of elements:
+
+Job: Controls the lifecycle of the coroutine.
+CoroutineDispatcher: Dispatches work to the appropriate thread.
+CoroutineName: The name of the coroutine, useful for debugging.
+CoroutineExceptionHandler: Handles uncaught exceptions.
+
+For new coroutines created within a scope, a new Job instance is assigned to the new coroutine, and the other CoroutineContext elements are inherited from the containing scope. You can override the inherited elements by passing a new CoroutineContext to the launch or async function. Note that passing a Job to launch or async has no effect, as a new instance of Job is always assigned to a new coroutine.
+
+val job2 = scope.launch(Dispatchers.Default + CoroutineName("BackgroundCoroutine")) {
+            // New coroutine with CoroutineName = "BackgroundCoroutine" (overridden)
+        }
+withContext
+This suspending function is cancellable. It immediately checks for cancellation of the resulting context and throws CancellationException if it is not active.
+
+> how to due with Cancellable
+
+Note that the result of withContext invocation is dispatched into the original context in a cancellable way with a prompt cancellation guarantee, which means that if the original coroutineContext in which withContext was invoked is cancelled by the time its dispatcher starts to execute the code, it discards the result of withContext and throws CancellationException.
+The cancellation behaviour described above is enabled if and only if the dispatcher is being changed. For example, when using withContext(NonCancellable) { ... } there is no change in dispatcher and this call will not be cancelled neither on entry to the block inside withContext nor on exit from it.
+
+
+https://stackoverflow.com/questions/78446887/channel-vs-shared-flow-what-is-the-difference
+
+For the collector this doesn't pose too much of a problem, though, it won't make much of a difference anyways in how the flow should be handled. Just keep in mind that if you collect a cold Flow multiple times, you will repeat at least some of the value-producing code.
+
+As a rule of thumb a Flow that is naturally cold should only be made hot at the latest possible moment, when it is actually needed. In Android apps that will usually be the view model where the flow is converted to a StateFlow, a specially configured SharedFlow that has the semantics of a single observable value (much like a LiveData or MutableState).
+
+> When is a flow get garbage collected?
+   > Try using a weakreference to store a flow
+   > try emit after .first()
+   > try how to stop collect
+      > https://stackoverflow.com/questions/57088428/kotlin-flow-how-to-unsubscribe-stop
+
+What is the precise type of Flow is not important to consumer?
+   > that why hot or cold is not important to consumer also?
+   > What kind of operation can only be done with concrete type of Flow?
+
+example of cold flow
+> flow {}
+> callbackFlow {} ?
+
+
+StateFlow vs SharedFlow
+> StateFlow is kind of SharedFlow?
+   > replay = 1, distinctUntilChange, dropOldest,
+   > stateFlow has .update() function (for thread safe operation?)
+   > SharedFlow for broadcast purpose?
+   > StateFlow for observation of app state, has .value representing the current value
+
+A SharedFlow is a highly-configurable generalization of StateFlow.
+
+
+
+
+concrete example of SharedFlow
+
+https://medium.com/better-programming/stop-calling-kotlin-flows-hot-and-cold-48e87708d863
+
+
+
+Unlike a cold flow built using the flow builder, a StateFlow is hot: collecting from the flow doesn't trigger any producer code.
+
+> intermediate operator
+   > sharedIn
+      > share the data from a cold flow?
+> terminate operator
+   > collect
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
