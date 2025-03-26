@@ -1,0 +1,45 @@
+Dependency Injection
+
+
+> constructor injection
+> field/setter injection
+   > used when object construction is not in control
+
+> lazy initialization of dependency
+
+> reflection-based
+> code generation at compile time
+
+
+Dagger
+
+> dependency graph (container)
+
+
+> subcomponent for specific flow
+
+
+Component (aka graph/container?)
+> an interface to declare dependency type
+> when build the project, Dagger generate imlpementation of the interface to provide the dependency needed
+
+// Scope annotations on a @Component interface informs Dagger that classes annotated
+// with this annotation (i.e. @Singleton) are bound to the life of the graph and so
+// the same instance of that type is provided every time the type is requested.
+> life of the graph?
+> Scope can be apply to
+   > @Component interface
+   > dependency class
+
+Use constructor injection with @Inject to add types to the Dagger graph whenever it's possible. When it's not:
+Use @Binds to tell Dagger which implementation an interface should have.
+Use @Provides to tell Dagger how to provide classes that your project doesn't own.
+
+
+
+
+
+
+
+
+Hilt
