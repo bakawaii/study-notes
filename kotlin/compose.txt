@@ -1,0 +1,8 @@
+https://developer.android.com/develop/ui/compose/lifecycle
+
+https://developer.android.com/codelabs/jetpack-compose-migration#0
+
+compose Dispose
+
+https://developer.android.com/reference/kotlin/androidx/compose/ui/platform/ViewCompositionStrategy
+
