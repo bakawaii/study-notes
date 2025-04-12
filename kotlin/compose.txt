@@ -6,3 +6,13 @@ compose Dispose
 
 https://developer.android.com/reference/kotlin/androidx/compose/ui/platform/ViewCompositionStrategy
 
+Insets
+https://issuetracker.google.com/issues/236862874?pli=1
+https://cs.android.com/android/platform/superproject/+/master:frameworks/base/core/java/android/view/ViewGroup.java;l=7341-7371;drc=6411c81462e3594c38a1be5d7c27d67294139ab8
+https://issuetracker.google.com/issues/397459624
+https://issuetracker.google.com/issues/249727298
+https://issuetracker.google.com/issues/407812168
+imepadding
+https://medium.com/androiddevelopers/insets-handling-tips-for-android-15s-edge-to-edge-enforcement-872774e8839b
+https://medium.com/lonto-digital-services-integrator/cooking-window-inset-with-jetpack-compose-sauce-and-a-pinch-of-view-4fea49407314
+https://developer.android.com/develop/ui/compose/system/insets
