@@ -1,6 +1,7 @@
-Nice article:
+Useful materials:
 https://engineering.teknasyon.com/composable-modifier-vs-composed-factory-in-jetpack-compose-6cbb675b0e7b
 https://engineering.teknasyon.com/stop-passing-event-ui-action-callbacks-in-jetpack-compose-a4143621c365
+https://www.youtube.com/watch?v=BjGX2RftXsU
 
 
 https://developer.android.com/develop/ui/compose/lifecycle
