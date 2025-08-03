@@ -1,0 +1,79 @@
+https://developer.android.com/guide/topics/ui/how-android-draws
+
+https://developer.android.com/reference/android/view/View.MeasureSpec
+
+https://yot4106.medium.com/android-view-layout-210443457889
+
+https://stackoverflow.com/questions/12266899/onmeasure-custom-view-explanation
+
+https://stackoverflow.com/questions/42390378/custom-views-onmeasure-how-to-get-width-based-on-height
+
+https://stackoverflow.com/questions/6631105/when-is-view-onmeasure-called
+
+https://mohamad-wael.medium.com/what-is-the-onmeasure-method-in-android-c14f4d27d378
+
+
+
+android view onMeasure
+Google AI answer
+
+In Android, the onMeasure() method is a crucial part of a View or ViewGroup's lifecycle, responsible for determining the size of the view during the layout process. When the Android system needs to lay out the UI, it goes through a measurement pass where each view is asked to measure itself and its children (for ViewGroups).
+Purpose:
+The primary purpose of onMeasure() is to calculate and set the measured dimensions (width and height) of the view based on the constraints provided by its parent and its own desired content size.
+Parameters:
+The onMeasure() method receives two int parameters: widthMeasureSpec and heightMeasureSpec. These MeasureSpec values are composite integers that encapsulate both a mode and a size.
+Mode:
+Indicates the type of constraint imposed by the parent.
+MeasureSpec.EXACTLY: The parent has determined an exact size for the child. This occurs when layout_width or layout_height is set to a fixed dimension (e.g., 100dp) or match_parent.
+MeasureSpec.AT_MOST: The child can be as large as it wants, up to a specified maximum size. This typically occurs when layout_width or layout_height is set to wrap_content.
+MeasureSpec.UNSPECIFIED: The parent places no constraints on the child's size, allowing it to be as large as it desires. This mode is less common and often seen in specific scenarios like ScrollView children.
+Size:
+The actual dimension (in pixels) associated with the MeasureSpec.EXACTLY or MeasureSpec.AT_MOST modes.
+Implementation:
+When overriding onMeasure() in a custom View or ViewGroup, the implementation should:
+Extract Mode and Size:
+Use MeasureSpec.getMode() and MeasureSpec.getSize() to extract the mode and size from the widthMeasureSpec and heightMeasureSpec.
+Calculate Desired Dimensions:
+Based on the extracted modes and sizes, and considering the view's content, calculate the desired measuredWidth and measuredHeight. For wrap_content, you'll typically calculate a size based on the content's intrinsic dimensions.
+Set Measured Dimensions:
+Call setMeasuredDimension(measuredWidth, measuredHeight) to store the calculated dimensions. This is a crucial step; if omitted, the view's dimensions will not be correctly set, potentially leading to layout issues.
+Example (Custom View):
+Java
+
+import android.content.Context;
+import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.Paint;
+import android.util.AttributeSet;
+import android.view.View;
+
+public class MyCustomView extends View {
+
+    private Paint paint;
+    private String text = "Hello Custom View!";
+
+    public MyCustomView(Context context, AttributeSet attrs) {
+        super(context, attrs);
+        paint = new Paint();
+        paint.setColor(Color.BLUE);
+        paint.setTextSize(50f);
+    }
+
+    @Override
+    protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
+        int desiredWidth = (int) paint.measureText(text) + getPaddingLeft() + getPaddingRight();
+        int desiredHeight = (int) (paint.descent() - paint.ascent()) + getPaddingTop() + getPaddingBottom();
+
+        int width = resolveSizeAndState(desiredWidth, widthMeasureSpec, 0);
+        int height = resolveSizeAndState(desiredHeight, heightMeasureSpec, 0);
+
+        setMeasuredDimension(width, height);
+    }
+
+    @Override
+    protected void onDraw(Canvas canvas) {
+        super.onDraw(canvas);
+        canvas.drawText(text, getPaddingLeft(), getPaddingTop() - paint.ascent(), paint);
+    }
+}
+In this example, onMeasure() calculates the desired size based on the text content and then uses resolveSizeAndState() to handle the MeasureSpec modes and determine the final measured dimensions.
