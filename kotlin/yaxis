@@ -1,0 +1,140 @@
+fun generateFlexibleTicks(maxValue: Double, tickCount: Int): List<Tick> {
+    if (maxValue <= 0 || tickCount <= 0) return emptyList()
+
+    // 1. Determine the raw distance between each tick
+    val rawInterval = maxValue / tickCount
+    
+    // 2. Find the power of 10 (magnitude) for this interval 
+    // e.g., for 1500, exponent is 3.0 (10^3 = 1000)
+    val exponent = floor(log10(rawInterval))
+    val magnitude = 10.0.pow(exponent)
+    
+    // 3. Normalize the interval to a value between 1 and 10
+    val fraction = rawInterval / magnitude
+
+    // 4. Pick the smallest "Nice" number that is >= our fraction
+    // This list includes decimals like 1.5 or 2.5 to stay close to the maxValue
+    val niceFractions = listOf(1.0, 1.2, 1.5, 2.0, 2.5, 3.0, 4.0, 5.0, 6.0, 8.0, 10.0)
+    val selectedFraction = niceFractions.firstOrNull { it >= fraction } ?: 10.0
+    
+    // 5. Scale it back up to the original magnitude
+    val interval = selectedFraction * magnitude
+
+    // 6. Map to Tick objects
+    return (0..tickCount).map { i ->
+        val value = i * interval
+        Tick(value, formatAsInteger(value))
+    }
+}
+
+fun generateIntegerLinearTicks(maxValue: Double, tickCount: Int): List<Tick> {
+    if (maxValue <= 0 || tickCount <= 0) return emptyList()
+
+    // 1. Standard calculation for magnitude
+    val rawInterval = maxValue / tickCount
+    val exponent = floor(log10(rawInterval))
+    val magnitude = 10.0.pow(exponent)
+    val fraction = rawInterval / magnitude
+
+    // 2. Select a nice fraction (same as above)
+    val niceFractions = listOf(1.0, 1.2, 1.5, 2.0, 2.5, 3.0, 4.0, 5.0, 6.0, 8.0, 10.0)
+    var selectedFraction = niceFractions.firstOrNull { it >= fraction } ?: 10.0
+    var interval = ceil(selectedFraction * magnitude)
+
+    // 3. UNIT ALIGNMENT (The "Strict" part)
+    // Identify if the value falls into K, M, B, or T category
+    val unit = when {
+        interval >= 1_000_000_000_000 -> 1_000_000_000_000.0
+        interval >= 1_000_000_000 -> 1_000_000_000.0
+        interval >= 1_000_000 -> 1_000_000.0
+        interval >= 1_000 -> 1_000.0
+        else -> 1.0
+    }
+    
+    // 4. Force the interval to be a multiple of the unit.
+    // This prevents 1500 becoming 1.5K; it forces it to 2000 (2K).
+    interval = ceil(interval / unit) * unit
+
+    return (0..tickCount).map { i ->
+        val value = i * interval
+        Tick(value, formatStrictlyAsInteger(value))
+    }
+}
+
+// Using Long/Int division is the safest way to strip decimals
+fun formatStrictlyAsInteger(value: Double): String {
+    val v = value.roundToLong()
+    return when {
+        v >= 1_000_000_000_000L -> "${v / 1_000_000_000_000L}T"
+        v >= 1_000_000_000L -> "${v / 1_000_000_000L}B"
+        v >= 1_000_000L -> "${v / 1_000_000L}M"
+        v >= 1_000L -> "${v / 1_000L}K"
+        else -> v.toString()
+    }
+}
+
+
+
+
+
+
+func generateFlexibleTicks(maxValue: Double, tickCount: Int) -> [Tick] {
+    guard maxValue > 0, tickCount > 0 else { return [] }
+
+    // 1. Basic math to find step distance
+    let rawInterval = maxValue / Double(tickCount)
+    
+    // 2. Identify the scale (Thousands, Millions, etc.)
+    let exponent = floor(log10(rawInterval))
+    let magnitude = pow(10, exponent)
+    
+    // 3. Convert interval to a [1.0 - 10.0] range
+    let fraction = rawInterval / magnitude
+
+    // 4. Select a 'Nice' multiplier. 
+    // Including 1.2, 1.5, etc., keeps the last tick "close" to maxValue
+    let niceFractions = [1.0, 1.2, 1.5, 2.0, 2.5, 3.0, 4.0, 5.0, 6.0, 8.0, 10.0]
+    let selectedFraction = niceFractions.first(where: { $0 >= fraction }) ?? 10.0
+    
+    // 5. Re-apply the scale to get the final step size
+    let interval = selectedFraction * magnitude
+
+    return (0...tickCount).map { i in
+        let value = Double(i) * interval
+        return Tick(value: value, label: formatAsInteger(value))
+    }
+}
+
+
+func generateIntegerLinearTicks(maxValue: Double, tickCount: Int) -> [Tick] {
+    guard maxValue > 0, tickCount > 0 else { return [] }
+
+    // 1. Magnitude calculation
+    let rawInterval = maxValue / Double(tickCount)
+    let exponent = floor(log10(rawInterval))
+    let magnitude = pow(10, exponent)
+    let fraction = rawInterval / magnitude
+
+    // 2. Pick nice fraction
+    let niceFractions = [1.0, 1.2, 1.5, 2.0, 2.5, 3.0, 4.0, 5.0, 6.0, 8.0, 10.0]
+    let selectedFraction = niceFractions.first(where: { $0 >= fraction }) ?? 10.0
+    var interval = ceil(selectedFraction * magnitude)
+
+    // 3. UNIT ALIGNMENT
+    // Determine the rounding "Bucket" (Thousands, Millions, etc.)
+    let unit: Double
+    if interval >= 1_000_000_000_000 { unit = 1_000_000_000_000 }
+    else if interval >= 1_000_000_000 { unit = 1_000_000_000 }
+    else if interval >= 1_000_000 { unit = 1_000_000 }
+    else if interval >= 1_000 { unit = 1_000 }
+    else { unit = 1.0 }
+
+    // 4. Snap the interval up to the nearest whole unit.
+    // This ensures every tick label is a whole number (No decimals)
+    interval = ceil(interval / unit) * unit
+
+    return (0...tickCount).map { i in
+        let value = Double(i) * interval
+        return Tick(value: value, label: formatStrictlyAsInteger(value))
+    }
+}
