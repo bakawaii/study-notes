@@ -77,3 +77,45 @@ public class MyCustomView extends View {
     }
 }
 In this example, onMeasure() calculates the desired size based on the text content and then uses resolveSizeAndState() to handle the MeasureSpec modes and determine the final measured dimensions.
+
+
+@Composable
+fun SlashedProgressBarComposeStyle(
+    modifier: Modifier = Modifier,
+    backgroundColor: Color = Color(0xFFE0E0E0), // Light grey background
+    slashColor: Color = Color(0xFFBDBDBD),      // Darker grey slashes
+    slashWidth: Dp = 4.dp,
+    slashSpacing: Dp = 12.dp
+) {
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(24.dp)
+            // 1. Clip the Box container to a pill shape
+            .clip(CircleShape)
+            // 2. Apply the background color to the clipped area
+            .background(backgroundColor)
+            // 3. Draw the slashes on top using drawWithContent
+            .drawWithContent {
+                // Draws the empty content box first (handling background if any layout children existed)
+                drawContent()
+
+                val stripeWidthPx = slashWidth.toPx()
+                val stripeSpacingPx = slashSpacing.toPx()
+                val totalSpacing = stripeWidthPx + stripeSpacingPx
+
+                // Start behind 0 to account for the 45-degree tilt angle
+                var xOffset = -size.height
+
+                while (xOffset < size.width) {
+                    drawLine(
+                        color = slashColor,
+                        start = Offset(xOffset, 0f),
+                        end = Offset(xOffset + size.height, size.height),
+                        strokeWidth = stripeWidthPx
+                    )
+                    xOffset += totalSpacing
+                }
+            }
+    )
+}
