@@ -26,3 +26,230 @@ https://developer.android.com/develop/ui/compose/system/insets
 
 
 https://android-developers.googleblog.com/2025/04/whats-new-in-jetpack-compose-april-25.html
+
+
+
+Implementing Pick-Up-and-Move for list reordering in Jetpack Compose with full Accessibility (a11y) support requires two distinct interaction models:
+
+Touch / Gesture Mode: Dragging an item vertically and swapping indices in a SnapshotStateList.
+
+Accessibility / Screen Reader Mode: Exposing custom accessibility actions (moveUp, moveDown) via SemanticsPropertyReceiver so talkback users can reorder items without complex drag gestures.
+
+Key Architectural Requirements
+Semantic Actions: Add CustomAccessibilityAction labels so TalkBack reads explicit commands ("Move Up", "Move Down") when an item is focused.
+
+Live Announcements: Use AccessibilityManager to announce position changes verbally (e.g., "Item moved to position 2 of 5").
+
+Keyboard & Focus State: Retain focus on the active item as it shifts positions.
+
+
+
+
+
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshots.SnapshotStateList
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalAccessibilityManager
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.unit.dp
+
+@Composable
+fun AccessibleReorderableList() {
+    val items = remember {
+        mutableStateListOf(
+            "Task 1: Review pull requests",
+            "Task 2: Design system update",
+            "Task 3: Refactor database schema",
+            "Task 4: Write accessibility tests"
+        )
+    }
+
+    val accessibilityManager = LocalAccessibilityManager.current
+
+    // Track active drag state across composition
+    var draggedIndex by remember { mutableStateOf<Int?>(null) }
+    var dragOffset by remember { mutableFloatStateOf(0f) }
+
+    // Helper function to handle item movement + live announcements
+    fun moveItem(fromIndex: Int, toIndex: Int) {
+        if (toIndex in items.indices && fromIndex != toIndex) {
+            val movedItem = items.removeAt(fromIndex)
+            items.add(toIndex, movedItem)
+            
+            // Announce order change to screen reader users
+            accessibilityManager?.announce(
+                "${movedItem}, moved to position ${toIndex + 1} of ${items.size}"
+            )
+        }
+    }
+
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        itemsIndexed(
+            items = items,
+            key = { _, item -> item } // Key is required for smooth item animations
+        ) { index, item ->
+            val isBeingDragged = draggedIndex == index
+
+            val elevation by animateFloatAsState(
+                targetValue = if (isBeingDragged) 12f else 2f,
+                label = "elevation"
+            )
+
+            Card(
+                colors = CardDefaults.cardColors(
+                    containerColor = if (isBeingDragged) 
+                        MaterialTheme.colorScheme.surfaceVariant 
+                    else 
+                        MaterialTheme.colorScheme.surface
+                ),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .animateItem() // Built-in position change animation
+                    .shadow(elevation.dp, RoundedCornerShape(12.dp))
+                    .graphicsLayer {
+                        translationY = if (isBeingDragged) dragOffset else 0f
+                    }
+                    // -------------------------------------------------------------
+                    // 1. Accessibility Semantics & Screen Reader Integration
+                    // -------------------------------------------------------------
+                    .semantics {
+                        stateDescription = "Position ${index + 1} of ${items.size}"
+                        customActions = listOfNotNull(
+                            if (index > 0) {
+                                CustomAccessibilityAction(label = "Move Up") {
+                                    moveItem(index, index - 1)
+                                    true
+                                }
+                            } else null,
+                            if (index < items.size - 1) {
+                                CustomAccessibilityAction(label = "Move Down") {
+                                    moveItem(index, index + 1)
+                                    true
+                                }
+                            } else null
+                        )
+                    }
+                    // -------------------------------------------------------------
+                    // 2. Gesture Detector for Touch Users
+                    // -------------------------------------------------------------
+                    .pointerInput(Unit) {
+                        detectDragGesturesAfterLongPress(
+                            onDragStart = {
+                                draggedIndex = index
+                                dragOffset = 0f
+                            },
+                            onDragEnd = {
+                                draggedIndex = null
+                                dragOffset = 0f
+                            },
+                            onDragCancel = {
+                                draggedIndex = null
+                                dragOffset = 0f
+                            },
+                            onDrag = { change, dragAmount ->
+                                change.consume()
+                                dragOffset += dragAmount.y
+
+                                val currentIndex = draggedIndex ?: return@detectDragGesturesAfterLongPress
+                                const val approxRowHeightPx = 140f
+                                val targetIndex = (currentIndex + (dragOffset / approxRowHeightPx).toInt())
+                                    .coerceIn(0, items.size - 1)
+
+                                if (targetIndex != currentIndex) {
+                                    moveItem(currentIndex, targetIndex)
+                                    draggedIndex = targetIndex
+                                    dragOffset -= (targetIndex - currentIndex) * approxRowHeightPx
+                                }
+                            }
+                        )
+                    }
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = item,
+                        style = MaterialTheme.typography.bodyLarge,
+                        modifier = Modifier.weight(1f)
+                    )
+
+                    // Clear semantics on decorative drag icon to avoid duplicate speech targets
+                    Box(modifier = Modifier.clearAndSetSemantics {}) {
+                        Icon(
+                            imageVector = Icons.Default.Menu,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+
+
+What Makes This Implementation Accessible
+CustomAccessibilityAction integration:
+TalkBack users hear: "Task 1... Actions available: Move Up, Move Down". Swiping up/down opens the accessibility context menu to trigger a move with a single tap.
+
+Live Voice Announcements via LocalAccessibilityManager:
+Whenever an item is moved (via gesture or accessibility action), the screen reader immediately speaks: "Task 1, moved to position 2 of 4".
+
+Modifier.clearAndSetSemantics on Drag Handle:
+Removes redundant touch targets for screen readers so focus stays cleanly on the row component as a single interactive unit.
+
+Item Keying & Smooth Motion:
+Setting a unique key in itemsIndexed paired with .animateItem() provides visual context for sighted users and low-vision screen reader users watching screen bounds change.
+
+
+
+
+
+
+
+
+
+
